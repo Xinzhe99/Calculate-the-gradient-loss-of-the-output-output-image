@@ -1,0 +1,35 @@
+import cv2
+import numpy as np
+import torch
+import torch.nn as nn
+# x = torch.randn(1,5, 5)
+# y = torch.randn(1,5, 5)
+# out = torch.randn(1,5, 5)
+class Gra_loss(nn.Module):
+    def __init__(self):
+        super(Gra_loss, self).__init__()
+        self.eps=1e-8
+    def forward(self,x,y,out):
+        x=x.permute(1, 2, 0).numpy()
+        y=y.permute(1, 2, 0).numpy()
+        out=out.permute(1, 2, 0).numpy()
+        grad_lap_1 = cv2.Laplacian(x, -1, ksize=3)
+        grad_lap_1_abs = np.maximum(grad_lap_1, -1 * grad_lap_1)
+        grad_lap_2 = cv2.Laplacian(y, -1, ksize=3)
+        grad_lap_2_abs = np.maximum(grad_lap_2, -1 * grad_lap_2)
+        DG = (grad_lap_1 + grad_lap_2) / np.maximum((grad_lap_1_abs + grad_lap_2_abs + self.eps),
+                                            -1 * (grad_lap_1_abs + grad_lap_2_abs + self.eps))
+        grad_lap_add_abs = np.maximum(grad_lap_1_abs, grad_lap_2_abs)
+        GM = DG * grad_lap_add_abs
+        GM = np.around(GM, 3)
+        # 求梯度图像
+        groundtruth= cv2.Laplacian(out, -1, ksize=3)
+        loss=torch.tensor(((groundtruth-GM)**2)/(x.shape[1]*x.shape[2]))
+        loss=torch.sum(loss)
+        return loss
+#
+# l1=Gra_loss()
+# loss1=l1(x,y,out)
+# print(loss1)
+#
+
